@@ -1,0 +1,201 @@
+// android/build.gradle
+
+// based on:
+//
+// * https://github.com/facebook/react-native/blob/0.60-stable/template/android/build.gradle
+//   original location:
+//   - https://github.com/facebook/react-native/blob/0.58-stable/local-cli/templates/HelloWorld/android/build.gradle
+//
+// * https://github.com/facebook/react-native/blob/0.60-stable/template/android/app/build.gradle
+//   original location:
+//   - https://github.com/facebook/react-native/blob/0.58-stable/local-cli/templates/HelloWorld/android/app/build.gradle
+
+def DEFAULT_COMPILE_SDK_VERSION = 31
+def DEFAULT_BUILD_TOOLS_VERSION = '30.0.2'
+def DEFAULT_MIN_SDK_VERSION = 16
+def DEFAULT_TARGET_SDK_VERSION = 30
+
+def safeExtGet(prop, fallback) {
+    rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+}
+
+
+buildscript {
+    // The Android Gradle plugin is only required when opening the android folder stand-alone.
+    // This avoids unnecessary downloads and potential conflicts when the library is included as a
+    // module dependency in an application project.
+    // ref: https://docs.gradle.org/current/userguide/tutorial_using_tasks.html#sec:build_script_external_dependencies
+    if (project == rootProject) {
+        repositories {
+            google()
+            jcenter()
+        }
+        dependencies {
+            classpath 'com.android.tools.build:gradle:4.2.2'
+        }
+    }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'maven-publish'
+
+android {
+    compileSdkVersion safeExtGet('compileSdkVersion', DEFAULT_COMPILE_SDK_VERSION)
+    buildToolsVersion safeExtGet('buildToolsVersion', DEFAULT_BUILD_TOOLS_VERSION)
+    defaultConfig {
+        minSdkVersion safeExtGet('minSdkVersion', DEFAULT_MIN_SDK_VERSION)
+        targetSdkVersion safeExtGet('targetSdkVersion', DEFAULT_TARGET_SDK_VERSION)
+        versionCode 1
+        versionName "1.0"
+    }
+    lintOptions {
+        abortOnError false
+    }
+
+    dexOptions { 
+        preDexLibraries = false 
+        javaMaxHeapSize "4g" 
+    }
+
+    compileOptions {
+        targetCompatibility 1.8 
+        sourceCompatibility 1.8 
+    } 
+    
+ 
+    sourceSets {
+        main {
+            jniLibs.srcDir 'src/main/libs'
+            jni.srcDirs = [] //disable automatic ndk-build call
+            assets {
+                srcDirs 'src/main/assets'
+            }
+        }
+    }
+}
+
+repositories {
+    // ref: https://www.baeldung.com/maven-local-repository
+    mavenLocal()
+    maven {
+        // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
+        url "$rootDir/../node_modules/react-native/android"
+    }
+    maven {
+        // Android JSC is installed from npm
+        url "$rootDir/../node_modules/jsc-android/dist"
+    }
+    google()
+    jcenter()
+    mavenCentral()
+}
+
+dependencies {
+  
+
+    implementation 'com.facebook.react:react-native:+'  // From node_modules
+    implementation 'com.google.android.gms:play-services-vision:19.0.0'
+    implementation "androidx.lifecycle:lifecycle-common-java8:2.1.0"
+
+
+    /**
+     * Базовые библиотеки и библиотеки для дизайна
+     */
+    implementation 'androidx.appcompat:appcompat:1.3.1'
+    implementation 'com.google.android.material:material:1.6.1'
+
+    /**
+     * Набор библиотек для тестов
+     */
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.2'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+    androidTestImplementation 'androidx.test:rules:1.3.0'
+    implementation 'com.google.android.material:material:1.1.0'
+
+    /**
+     * Библиотеки для работы с Rest Api
+     */
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.8.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-scalars:2.9.0'
+
+    /**
+     * Библиотеки для сериализации/десериализации в/из JSON
+     */
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.2'
+    implementation 'com.google.code.gson:gson:2.8.6'
+
+    /**
+     * Библиотека для работы с преобразованиями
+     */
+    implementation 'com.google.guava:guava:30.1-jre'
+
+    /**
+     * Библиотека для работы с QR
+     */
+    implementation  'com.journeyapps:zxing-android-embedded:4.3.0'
+
+    /**
+     * Библиотека для работы с состоянием приложения ( для отслеживания перехода в свернутое состояние, диспетчер задач и прочее)
+     */
+    implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
+    implementation 'androidx.lifecycle:lifecycle-common-java8:2.3.1'
+
+    implementation 'androidx.biometric:biometric:1.1.0'
+
+    implementation 'org.ini4j:ini4j:0.5.1'
+
+    /**
+     * Бибилиотека для работы с pdf файлами https://github.com/TomRoush/PdfBox-Android
+     */
+    implementation 'com.tom-roush:pdfbox-android:2.0.8.0'
+
+    implementation 'com.jsibbold:zoomage:1.3.1'
+
+    implementation 'com.jakewharton:process-phoenix:2.1.2'
+}
+
+
+
+def configureReactNativePom(def pom) {
+    def packageJson = new groovy.json.JsonSlurper().parseText(file('../package.json').text)
+
+    pom.project {
+        name packageJson.title
+        artifactId packageJson.name
+        version = packageJson.version
+        group = "ru.nasvyazi.changebundle"
+        description packageJson.description
+        url packageJson.repository.baseUrl
+
+        licenses {
+            license {
+                name packageJson.license
+                url packageJson.repository.baseUrl + '/blob/master/' + packageJson.licenseFilename
+                distribution 'repo'
+            }
+        }
+
+        developers {
+            developer {
+                id packageJson.author.username
+                name packageJson.author.name
+            }
+        }
+    }
+}
+
+
+configurations.all { 
+    resolutionStrategy.eachDependency { 
+        DependencyResolveDetails details -> 
+        def requested = details.requested 
+        if (requested.group == "com.android.support") {
+             if (!requested.name.startsWith("multidex")) { 
+                details.useVersion "26.+" 
+            } 
+        }
+    } 
+}
