@@ -12,7 +12,7 @@
 #endif
 
 
-@class RNChangeBundleLib;
+@class RNChangeBundleFS;
 @interface RNChangeBundleLib : NSObject <RCTBridgeModule>
 
 + (NSURL *)bundleURL;

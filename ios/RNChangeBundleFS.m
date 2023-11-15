@@ -9,12 +9,12 @@ static NSString * const activeBundleName = @"activeBundle";
 static NSString * const storeFileName = @"_RNChangeBundle.plist";
 
 
-@interface RNChangeBundleLib () <RCTBridgeModule>
+@interface RNChangeBundleFS () <RCTBridgeModule>
 @end
 
 static NSURL *_defaultBundleURL = nil;
 
-@implementation RNChangeBundleLib {
+@implementation RNChangeBundleFS {
 
 }
 
