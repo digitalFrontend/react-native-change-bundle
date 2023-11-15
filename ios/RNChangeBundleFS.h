@@ -1,33 +1,35 @@
 
-#if __has_include("RCTBridgeModule.h")
-#import "RCTBridgeModule.h"
-#else
+#import "RNChangeBundleFS.h"
+#import <Foundation/Foundation.h>
+
+#if __has_include(<React/RCTAssert.h>)
 #import <React/RCTBridgeModule.h>
-#endif
-
-#if __has_include("RCTReloadCommand.h")
-#import "RCTReloadCommand.h"
 #else
-#import <React/RCTReloadCommand.h>
+#import "RCTBridgeModule.h"
 #endif
 
 
-@class RNChangeBundleFS;
-@interface RNChangeBundleLib : NSObject <RCTBridgeModule>
+@interface RNChangeBundleFS : NSObject  {
 
-+ (NSURL *)bundleURL;
-+ (NSMutableDictionary *)loadStore;
-+ (void)saveStore:(NSDictionary *)dict;
-+ (void)setDefaultBundleURL:(NSURL *)URL;
-+ (void)addBundle:(NSString *)bundleId pathForBundle:(NSString *)bundlePath pathForAssets:(NSString *)assetsPath withResolver: (RCTPromiseResolveBlock)resolve
-     withRejecter: (RCTPromiseRejectBlock)reject;
+}
 
-- (void)reloadBundle;
-- (void)registerBundle:(NSString *)bundleId atRelativePath:(NSString *)path;
-- (void)unregisterBundle:(NSString *)bundleId;
-- (void)setActiveBundle:(NSString *)bundleId;
-- (NSDictionary *)getBundles;
-- (bool)resetAllBundlesBetweenVersion;
-- (NSString *)getActiveBundle;
++ (NSString *_Nonnull) getDocumentDir;
++ (NSString *_Nonnull) getStoreFilePath;
++ (NSString *_Nonnull) getFolderForBundleId:(NSString *_Nonnull) bundleId;
++ (NSString *_Nonnull) getBundleFileNameForBundleId:(NSString *_Nonnull) bundleId;
++ (NSString *_Nonnull) getAssetsFolderNameForBundleId:(NSString *_Nonnull) bundleId;
+
++ (NSMutableDictionary *_Nonnull)loadStore;
++ (NSMutableDictionary *_Nonnull)createEmptyStore;
++ (void)saveStore:(NSDictionary *_Nonnull)dict;
+
++ (BOOL) exists:(NSString *_Nonnull) path;
++ (NSError *_Nullable) createFolder:(NSString *_Nonnull) path;
++ (NSError *_Nullable) remove:(NSString *_Nonnull) path;
++ (NSError *_Nullable) moveWithOverride:(NSString *_Nonnull) from to:(NSString *_Nonnull)to;
+
+
 
 @end
+
+

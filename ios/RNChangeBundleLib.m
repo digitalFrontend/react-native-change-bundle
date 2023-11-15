@@ -1,12 +1,11 @@
 #import <React/RCTBridgeModule.h>
 #import "RNChangeBundleLib.h"
+#import "RNChangeBundleFS.h"
 
-static NSString * const nameBundleList = @"bundleList";
 static NSString * const bundlesFolderName = @"bundles";
-static NSString * const assetsFolderName = @"assets";
-static NSString * const bundleFileName = @"main.jsbundle";
 static NSString * const activeBundleName = @"activeBundle";
-static NSString * const storeFileName = @"_RNChangeBundle.plist";
+static NSString * const nameBundleList = @"bundleList";
+static NSString * const nameWaitingReactStart = @"waitReactStart";
 
 
 @interface RNChangeBundleLib () <RCTBridgeModule>
@@ -18,109 +17,202 @@ static NSURL *_defaultBundleURL = nil;
 
 }
 
-static NSBundle *bundleResourceBundle = nil;
-static NSString *bundleResourceExtension = @"jsbundle";
-static NSString *bundleResourceName = @"main";
-static NSString *bundleResourceSubdirectory = nil;
-
 + (void)initialize
 {
     [super initialize];
-    if (self == [RNChangeBundleLib class]) {
-        // Use the mainBundle by default.
-        bundleResourceBundle = [NSBundle mainBundle];
-    }
 }
 
 + (NSURL *)bundleURL
 {
-    return [self bundleURLForResource:bundleResourceName
-                        withExtension:bundleResourceExtension
-                         subdirectory:bundleResourceSubdirectory
-                               bundle:bundleResourceBundle];
-}
-
-+ (NSURL *)bundleURLForResource:(NSString *)resourceName
-                  withExtension:(NSString *)resourceExtension
-                   subdirectory:(NSString *)resourceSubdirectory
-                         bundle:(NSBundle *)resourceBundle
-{
+    NSMutableDictionary *dict = [RNChangeBundleFS loadStore];
     
-    
-    NSMutableDictionary *dict = [RNChangeBundleLib loadStore];
-    
+    // Если стоит дефолтный запуск
     if ([dict[activeBundleName] isEqualToString: @""]){
         return _defaultBundleURL;
     } else {
-        return _defaultBundleURL;
+        // Если стоит запуск кастомного бандла
+        NSString *path = [RNChangeBundleFS getBundleFileNameForBundleId:dict[activeBundleName]];
+        
+        // Проверка на прошлый запуск реакта
+        if ([dict[nameWaitingReactStart] boolValue]){
+            // Если прошлый раз реакт не стартанул
+            dict[nameWaitingReactStart] = @NO;
+            [RNChangeBundleLib deleteBundle:dict[activeBundleName]];
+            [RNChangeBundleLib activateBundle:@""];
+            [RNChangeBundleFS saveStore:dict];
+            return _defaultBundleURL;
+        } else {
+            // Если прошлый раз реакт стартанул
+            BOOL isFileExists = [RNChangeBundleFS exists:path];
+            // Проверка на наличие этого кастомного файла
+            if (isFileExists){
+                // Если файл существует, то запускаем проверку на успешный старт реакта
+                dict[nameWaitingReactStart] = @YES;
+                [RNChangeBundleFS saveStore:dict];
+                return [NSURL fileURLWithPath:path];
+            } else {
+                // Если файла нет, то и кастомного реакта нет
+                [RNChangeBundleLib deleteBundle:dict[activeBundleName]];
+                [RNChangeBundleLib activateBundle:@""];
+                return _defaultBundleURL;
+            }
+        }
     }
-    
-    
-//    NSString *bundleRelativePath = dict[nameBundleList][activeBundles];
-//    if (bundleRelativePath == nil) {
-//        return _defaultBundleURL;
-//    }
-//    
-//    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-//    NSString *documentsDirectory = [paths firstObject];
-//    NSString *path = [documentsDirectory stringByAppendingPathComponent:bundleRelativePath];
-//   
-//    return [NSURL fileURLWithPath:path];
 }
 
-+ (NSMutableDictionary *)loadStore
-{
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *documentsDirectory = [paths firstObject];
-    NSString *path = [documentsDirectory stringByAppendingPathComponent:storeFileName];
-    
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    if (![fileManager fileExistsAtPath:path]) {
-        return [RNChangeBundleLib createEmptyStore];
-    } else {
-        return [NSMutableDictionary dictionaryWithContentsOfFile:path];
-    }
-}
 
-+ (NSMutableDictionary *)createEmptyStore {
 
-    NSMutableDictionary *defaults = [[NSMutableDictionary alloc] init];
-    defaults[nameBundleList] = [NSMutableDictionary dictionary];
-    defaults[activeBundleName] = @"";
-    return [defaults mutableCopy];
-}
-
-//+ (NSString *) getBuildId {
-//    return [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
-//}
-
-//+ (NSString *)getNameBundle {
-//    NSString *buildId = [RNChangeBundleLib getBuildId];
-//    NSString *name = [NSString stringWithFormat: @"%@%@", buildId, @"-activeBundles"];
-//    return name;
-//}
 
 + (void)setDefaultBundleURL:(NSURL *)URL
 {
     _defaultBundleURL = URL;
 }
 
-- (bool)resetAllBundlesBetweenVersion {
-    NSMutableDictionary *dict = [RNChangeBundleLib createEmptyStore];
-    [RNChangeBundleLib saveStore:dict];
-    return true;
-}
 
-+ (void)saveStore:(NSDictionary *)dict
++ (NSError *)addBundle:(NSString *)bundleId pathForBundle:(NSString *)bundlePath pathForAssets:(NSString *)assetsPath
 {
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *documentsDirectory = [paths firstObject];
-    NSString *path = [documentsDirectory stringByAppendingPathComponent:storeFileName];
+    NSError *error = nil;
     
-    [dict writeToFile:path atomically:YES];
+    NSString *path = [RNChangeBundleFS getFolderForBundleId:bundleId];
+
+    BOOL isFolderExists = [RNChangeBundleFS exists:path];
+    
+    if (!isFolderExists){
+        error = [RNChangeBundleFS createFolder:path];
+
+        if (error != nil){
+            NSLog(@"error %@", error);
+            return error;
+        }
+    }
+    
+    error = [RNChangeBundleFS moveWithOverride:bundlePath to:[RNChangeBundleFS getBundleFileNameForBundleId:bundleId]];
+    
+    if (error != nil){
+        NSLog(@"error %@", error);
+        return error;
+    }
+    
+    error = [RNChangeBundleFS moveWithOverride:assetsPath to:[RNChangeBundleFS getAssetsFolderNameForBundleId:bundleId]];
+    
+    if (error != nil){
+        NSLog(@"error %@", error);
+        return error;
+    }
+    
+    NSMutableDictionary *dict = [RNChangeBundleFS loadStore];
+    dict[nameBundleList][bundleId] = bundleId;
+    [RNChangeBundleFS saveStore:dict];
+    return error;
 }
 
-- (void)reloadBundle
+- (void)addBundlePromise:(NSString *)bundleId pathForBundle:(NSString *)bundlePath pathForAssets:(NSString *)assetsPath withResolver: (RCTPromiseResolveBlock)resolve
+                  withRejecter: (RCTPromiseRejectBlock)reject
+{
+    NSError *error = nil;
+    
+    error = [RNChangeBundleLib addBundle:bundleId pathForBundle:bundlePath pathForAssets:assetsPath];
+    
+    if (error == nil){
+        resolve(@"Added");
+    } else {
+        reject(@"RNChangeBundle", error.localizedDescription, error);
+    }
+}
+
++ (NSError *)deleteBundle:(NSString *)bundleId
+{
+    NSError *error = nil;
+    
+    NSString *path = [RNChangeBundleFS getFolderForBundleId:bundleId];
+
+    BOOL isFolderExists = [RNChangeBundleFS exists:path];
+    
+    if (isFolderExists){
+        error = [RNChangeBundleFS remove:path];
+
+        if (error != nil){
+            NSLog(@"error %@", error);
+            return error;
+        }
+    }
+    
+    
+    NSMutableDictionary *dict = [RNChangeBundleFS loadStore];
+    [dict[nameBundleList] removeObjectForKey:bundleId];
+    [RNChangeBundleFS saveStore:dict];
+    return error;
+}
+
+- (void)deleteBundlePromise:(NSString *)bundleId withResolver: (RCTPromiseResolveBlock)resolve
+                  withRejecter: (RCTPromiseRejectBlock)reject
+{
+    NSError *error = nil;
+    
+    error = [RNChangeBundleLib deleteBundle:bundleId];
+    
+    if (error == nil){
+        resolve(@"Deleted");
+    } else {
+        reject(@"RNChangeBundle", error.localizedDescription, error);
+    }
+}
+
++ (NSDictionary *)getBundles
+{
+    NSMutableDictionary *dict = [RNChangeBundleFS loadStore];
+    return dict[nameBundleList];
+}
+
+- (void)getBundlesPromise:(RCTPromiseResolveBlock)resolve
+                  withRejecter: (RCTPromiseRejectBlock)reject
+{
+    resolve([RNChangeBundleLib getBundles]);
+}
+
++ (NSString *)getActiveBundle
+{
+    NSMutableDictionary *dict = [RNChangeBundleFS loadStore];
+    return dict[activeBundleName];
+}
+
+- (void)getActiveBundlePromise:(RCTPromiseResolveBlock)resolve
+                  withRejecter: (RCTPromiseRejectBlock)reject
+{
+    resolve([RNChangeBundleLib getActiveBundle]);
+}
+
++ (void)activateBundle:(NSString *)bundleId
+{
+    NSMutableDictionary *dict = [RNChangeBundleFS loadStore];
+    dict[activeBundleName] = bundleId;
+    [RNChangeBundleFS saveStore:dict];
+}
+
+- (void)activateBundlePromise:(NSString *)bundleId withResolver: (RCTPromiseResolveBlock)resolve
+                  withRejecter: (RCTPromiseRejectBlock)reject
+{
+    [RNChangeBundleLib activateBundle:bundleId];
+    
+    resolve(@"Activated");
+}
+
++ (void)notifyIfUpdateApplies
+{
+    NSMutableDictionary *dict = [RNChangeBundleFS loadStore];
+    dict[nameWaitingReactStart] = @NO;
+    [RNChangeBundleFS saveStore:dict];
+    
+}
+
+- (void)notifyIfUpdateAppliesPromise:(RCTPromiseResolveBlock)resolve
+                  withRejecter: (RCTPromiseRejectBlock)reject
+{
+    [RNChangeBundleLib notifyIfUpdateApplies];
+    resolve(@"Notified");
+}
+
++ (void)reload
 {
     if ([NSThread isMainThread]) {
         RCTTriggerReloadCommandListeners(@"react-native-restart: Restart");
@@ -129,166 +221,53 @@ static NSString *bundleResourceSubdirectory = nil;
             RCTTriggerReloadCommandListeners(@"react-native-restart: Restart");
         });
     }
-    return;
 }
 
-- (void)addBundle:(NSString *)bundleId pathForBundle:(NSString *)bundlePath pathForAssets:(NSString *)assetsPath withResolver: (RCTPromiseResolveBlock)resolve
-     withRejecter: (RCTPromiseRejectBlock)reject
+- (void)reloadPromise:(RCTPromiseResolveBlock)resolve
+        withRejecter: (RCTPromiseRejectBlock)reject
 {
-  
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *documentsDirectory = [paths firstObject];
-    NSString *path = [[documentsDirectory stringByAppendingPathComponent:bundlesFolderName] stringByAppendingPathComponent:bundleId];
-    NSLog(@"bundleTest 1");
-    BOOL isDir = YES;
-    BOOL isFolderExists = [[NSFileManager defaultManager] fileExistsAtPath:path isDirectory:&isDir];
-    NSLog(@"bundleTest 2");
-    NSError *error = nil;
-    NSLog(@"bundleTest 3");
-    if (isFolderExists == NO){
-        NSLog(@"bundleTest 4");
-        [[NSFileManager defaultManager] createDirectoryAtPath:path withIntermediateDirectories:YES attributes:nil error:&error];
-        NSLog(@"bundleTest 5");
-        if (error != nil){
-            NSLog(@"bundleTest 6");
-            NSLog(@"error %@", error);
-            reject(@"RNChangeBundleError",error.localizedDescription, error);
-            return;
-        }
-    }
-    
-    NSLog(@"bundleTest 7");
-    BOOL status = [[NSFileManager defaultManager] moveItemAtPath:bundlePath toPath:[path stringByAppendingPathComponent:bundleFileName] error:&error];
-    NSLog(@"bundleTest 8");
-    if (status == NO) {
-        NSLog(@"bundleTest 9");
-        reject(@"RNChangeBundleError",error.localizedDescription, error);
-        return;
-    }
-    NSLog(@"bundleTest 10");
-    status = [[NSFileManager defaultManager] moveItemAtPath:assetsPath toPath:[path stringByAppendingPathComponent:assetsFolderName] error:&error];
-    NSLog(@"bundleTest 11");
-    if (status == NO) {
-        NSLog(@"bundleTest 12");
-        reject(@"RNChangeBundleError",error.localizedDescription, error);
-        return;
-    }
-    
-    NSLog(@"bundleTest 13");
-    NSMutableDictionary *dict = [RNChangeBundleLib loadStore];
-    dict[bundleId] = path;
-    [RNChangeBundleLib saveStore:dict];
-    resolve(path);
-}
-
-- (void)registerBundle:(NSString *)bundleId atRelativePath:(NSString *)relativePath
-{
-    NSMutableDictionary *dict = [RNChangeBundleLib loadStore];
-    dict[nameBundleList][bundleId] = relativePath;
-    [RNChangeBundleLib saveStore:dict];
-}
-
-- (void)unregisterBundle:(NSString *)bundleId
-{
-    NSMutableDictionary *dict = [RNChangeBundleLib loadStore];
-    NSMutableDictionary *bundlesDict = dict[nameBundleList];
-    [bundlesDict removeObjectForKey:bundleId];
-    [RNChangeBundleLib saveStore:dict];
-}
-
-- (void)setActiveBundle:(NSString *)bundleId
-{
-//    NSMutableDictionary *dict = [RNChangeBundleLib loadRegistry];
-//    NSString *name = [RNChangeBundleLib getNameBundle];
-//    //dict[name] = bundleId == nil ? @"" : bundleId;
-//    [dict setValue:bundleId == nil ? @"" : bundleId forKey:name];
-//    [RNChangeBundleLib storeRegistry:dict];
-}
-
-- (NSDictionary *)getBundles
-{
-    NSMutableDictionary *bundleList = [NSMutableDictionary dictionary];
-    NSMutableDictionary *dict = [RNChangeBundleLib loadStore];
-    for (NSString *bundleId in dict[nameBundleList]) {
-        NSString *relativePath = dict[bundleId];
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-        NSString *documentsDirectory = [paths firstObject];
-        NSString *path = [documentsDirectory stringByAppendingPathComponent:relativePath];
-        NSURL *URL = [NSURL fileURLWithPath:path];
-        
-        bundleList[bundleId] = [URL absoluteString];
-    }
-    
-    return bundleList;
-}
-
-- (NSString *)getActiveBundle
-{
-//    NSMutableDictionary *dict = [RNChangeBundleLib loadRegistry];
-//    NSString *name = [RNChangeBundleLib getNameBundle];
-//    NSString *activeBundles = dict[name]!=nil ? dict[name] : @"";
-//    if ([activeBundles isEqualToString:@""]) {
-//        return nil;
-//    }
-//    
-//    return activeBundles;
-    return @"";
+    [RNChangeBundleLib reload];
+    resolve(@"Reloaded");
 }
 
 RCT_REMAP_METHOD(addBundle, exportedAddBundle:(NSString *)bundleId pathForBundle:(NSString *)bundlePath  pathForAssets:(NSString *)assetsPath withResolver: (RCTPromiseResolveBlock)resolve
                  withRejecter: (RCTPromiseRejectBlock)reject)
 {
-    
-    [self addBundle:bundleId pathForBundle:bundlePath pathForAssets:assetsPath withResolver:resolve withRejecter:reject];
+    [self addBundlePromise:bundleId pathForBundle:bundlePath pathForAssets:assetsPath withResolver:resolve withRejecter:reject];
 }
 
-
-RCT_REMAP_METHOD(reloadBundle, exportedReloadBundle)
+RCT_REMAP_METHOD(deleteBundle, exportedDeleteBundle:(NSString *)bundleId withResolver: (RCTPromiseResolveBlock)resolve withRejecter: (RCTPromiseRejectBlock)reject)
 {
-    [self reloadBundle];
+    [self deleteBundlePromise:bundleId withResolver:resolve withRejecter:reject];
 }
 
-RCT_REMAP_METHOD(registerBundle, exportedRegisterBundle:(NSString *)bundleId atRelativePath:(NSString *)path)
+RCT_REMAP_METHOD(getBundles, exportedGetBundles:(RCTPromiseResolveBlock)resolve withRejecter: (RCTPromiseRejectBlock)reject)
 {
-    [self registerBundle:bundleId atRelativePath:path];
+    [self getBundlesPromise:resolve withRejecter:reject];
 }
 
-RCT_REMAP_METHOD(unregisterBundle, exportedUnregisterBundle:(NSString *)bundleId)
+RCT_REMAP_METHOD(getActiveBundle, exportedGetActiveBundle:(RCTPromiseResolveBlock)resolve withRejecter: (RCTPromiseRejectBlock)reject)
 {
-    [self unregisterBundle:bundleId];
+    [self getActiveBundlePromise:resolve withRejecter:reject];
 }
 
-RCT_REMAP_METHOD(setActiveBundle, exportedSetActiveBundle:(NSString *)bundleId)
+RCT_REMAP_METHOD(activateBundle, exportedActivateBundle:(NSString *)bundleId withResolver: (RCTPromiseResolveBlock)resolve withRejecter: (RCTPromiseRejectBlock)reject)
 {
-    [self setActiveBundle:bundleId];
+    [self activateBundlePromise:bundleId withResolver:resolve withRejecter:reject];
 }
 
-RCT_REMAP_METHOD(resetAllBundlesBetweenVersion,
-                 exportedresetAllBundlesBetweenVersionWithResolver:(RCTPromiseResolveBlock)resolve
-                 rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_REMAP_METHOD(notifyIfUpdateApplies, exportedNotifyIfUpdateApplies:(RCTPromiseResolveBlock)resolve withRejecter: (RCTPromiseRejectBlock)reject)
 {
-    bool completed = [self resetAllBundlesBetweenVersion];
-    resolve(@(completed));
+    [self notifyIfUpdateAppliesPromise:resolve withRejecter:reject];
 }
 
-RCT_REMAP_METHOD(getBundles,
-                 exportedGetBundlesWithResolver:(RCTPromiseResolveBlock)resolve
-                 rejecter:(RCTPromiseRejectBlock)reject)
+RCT_REMAP_METHOD(reload, exportedReload:(RCTPromiseResolveBlock)resolve withRejecter: (RCTPromiseRejectBlock)reject)
 {
-    resolve([self getBundles]);
+    [self reloadPromise:resolve withRejecter:reject];
 }
 
-RCT_REMAP_METHOD(getActiveBundle,
-                 exportedGetActiveBundleWithResolver:(RCTPromiseResolveBlock)resolve
-                 rejecter:(RCTPromiseRejectBlock)reject)
-{
-    NSString *activeBundles = [self getActiveBundle];
-    if (activeBundles == nil) {
-        resolve([NSNull null]);
-    } else {
-        resolve(activeBundles);
-    }
-}
+
 
 RCT_EXPORT_MODULE()
 

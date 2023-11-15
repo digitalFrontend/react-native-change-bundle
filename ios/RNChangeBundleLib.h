@@ -15,19 +15,29 @@
 @class RNChangeBundleLib;
 @interface RNChangeBundleLib : NSObject <RCTBridgeModule>
 
-+ (NSURL *)bundleURL;
-+ (NSMutableDictionary *)loadStore;
-+ (void)saveStore:(NSDictionary *)dict;
-+ (void)setDefaultBundleURL:(NSURL *)URL;
-+ (void)addBundle:(NSString *)bundleId pathForBundle:(NSString *)bundlePath pathForAssets:(NSString *)assetsPath withResolver: (RCTPromiseResolveBlock)resolve
-     withRejecter: (RCTPromiseRejectBlock)reject;
++ (NSURL *_Nonnull)bundleURL;
 
-- (void)reloadBundle;
-- (void)registerBundle:(NSString *)bundleId atRelativePath:(NSString *)path;
-- (void)unregisterBundle:(NSString *)bundleId;
-- (void)setActiveBundle:(NSString *)bundleId;
-- (NSDictionary *)getBundles;
-- (bool)resetAllBundlesBetweenVersion;
-- (NSString *)getActiveBundle;
++ (void)setDefaultBundleURL:(NSURL *_Nonnull)URL;
+
++ (NSError *_Nullable)addBundle:(NSString *_Nonnull)bundleId pathForBundle:(NSString *_Nonnull)bundlePath pathForAssets:(NSString *_Nonnull)assetsPath;
+- (void)addBundlePromise:(NSString *_Nonnull)bundleId pathForBundle:(NSString *_Nonnull)bundlePath pathForAssets:(NSString *_Nonnull)assetsPath withResolver: (RCTPromiseResolveBlock _Nonnull )resolve withRejecter: (RCTPromiseRejectBlock _Nonnull )reject;
+
++ (NSError *_Nullable)deleteBundle:(NSString *_Nonnull)bundleId;
+- (void)deleteBundlePromise:(NSString *_Nonnull)bundleId withResolver: (RCTPromiseResolveBlock _Nonnull )resolve withRejecter: (RCTPromiseRejectBlock _Nonnull )reject;
+
++ (NSDictionary *_Nonnull)getBundles;
+- (void)getBundlesPromise:(RCTPromiseResolveBlock _Nonnull )resolve withRejecter: (RCTPromiseRejectBlock _Nonnull )reject;
+
++ (NSString *_Nonnull)getActiveBundle;
+- (void)getActiveBundlePromise:(RCTPromiseResolveBlock _Nonnull )resolve withRejecter: (RCTPromiseRejectBlock _Nonnull )reject;
+
++ (void)activateBundle:(NSString *_Nonnull)bundleId;
+- (void)activateBundlePromise:(NSString *_Nonnull)bundleId withResolver: (RCTPromiseResolveBlock _Nonnull )resolve withRejecter: (RCTPromiseRejectBlock _Nonnull )reject;
+
++ (void)notifyIfUpdateApplies;
+- (void)notifyIfUpdateAppliesPromise:(RCTPromiseResolveBlock _Nonnull )resolve withRejecter: (RCTPromiseRejectBlock _Nonnull )reject;
+
++ (void)reload;
+- (void)reloadPromise:(RCTPromiseResolveBlock _Nonnull )resolve withRejecter: (RCTPromiseRejectBlock _Nonnull )reject;
 
 @end
