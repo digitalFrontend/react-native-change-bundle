@@ -40,4 +40,8 @@
 + (void)reload;
 - (void)reloadPromise:(RCTPromiseResolveBlock _Nonnull )resolve withRejecter: (RCTPromiseRejectBlock _Nonnull )reject;
 
++ (NSString *_Nonnull) getBuildId;
+- (void)getBuildIdPromise:(RCTPromiseResolveBlock _Nonnull )resolve
+             withRejecter: (RCTPromiseRejectBlock _Nonnull )reject;
+
 @end

@@ -45,6 +45,9 @@ let ChangeBundle = {
     },
     reload: () => {
         return RNChangeBundleLib.reload()
+    },
+    getBuildId: () => {
+        return RNChangeBundleLib.getBuildId()
     }
 }
 

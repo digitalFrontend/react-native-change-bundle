@@ -26,6 +26,8 @@ static NSString * const storeFileName = @"_RNChangeBundle.plist";
 static NSString * const nameBundleList = @"bundleList";
 static NSString * const activeBundleName = @"activeBundle";
 static NSString * const nameWaitingReactStart = @"waitReactStart";
+static NSString * const nameNativeBuildVersion = @"nativeBuildVersion";
+static NSString * const nameShouldDropActiveVersion = @"shouldDropActiveVersion";
 
 @implementation RNChangeBundleFS : NSObject {
 
@@ -91,6 +93,8 @@ static NSString * const nameWaitingReactStart = @"waitReactStart";
     defaults[nameBundleList] = [NSMutableDictionary dictionary];
     defaults[activeBundleName] = @"";
     defaults[nameWaitingReactStart] = @NO;
+    defaults[nameNativeBuildVersion] = @"";
+    defaults[nameShouldDropActiveVersion] = @NO;
     return [defaults mutableCopy];
 }
 

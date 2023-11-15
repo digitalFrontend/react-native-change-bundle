@@ -6,6 +6,8 @@ static NSString * const bundlesFolderName = @"bundles";
 static NSString * const activeBundleName = @"activeBundle";
 static NSString * const nameBundleList = @"bundleList";
 static NSString * const nameWaitingReactStart = @"waitReactStart";
+static NSString * const nameNativeBuildVersion = @"nativeBuildVersion";
+static NSString * const nameShouldDropActiveVersion = @"shouldDropActiveVersion";
 
 
 @interface RNChangeBundleLib () <RCTBridgeModule>
@@ -30,32 +32,41 @@ static NSURL *_defaultBundleURL = nil;
     if ([dict[activeBundleName] isEqualToString: @""]){
         return _defaultBundleURL;
     } else {
-        // Если стоит запуск кастомного бандла
-        NSString *path = [RNChangeBundleFS getBundleFileNameForBundleId:dict[activeBundleName]];
         
-        // Проверка на прошлый запуск реакта
-        if ([dict[nameWaitingReactStart] boolValue]){
-            // Если прошлый раз реакт не стартанул
-            dict[nameWaitingReactStart] = @NO;
-            [RNChangeBundleLib deleteBundle:dict[activeBundleName]];
-            [RNChangeBundleLib activateBundle:@""];
+        //Если прошло нативное обновление или не указано
+        if ([dict[nameNativeBuildVersion] isEqualToString: @""] || [dict[nameNativeBuildVersion] isEqualToString: [RNChangeBundleLib getBuildId]]){
+            // Если нативного обновления не было
+            // Если стоит запуск кастомного бандла
+            NSString *path = [RNChangeBundleFS getBundleFileNameForBundleId:dict[activeBundleName]];
+            
+            // Проверка на прошлый запуск реакта
+            if ([dict[nameWaitingReactStart] boolValue]){
+                // Если прошлый раз реакт не стартанул
+                dict[nameWaitingReactStart] = @NO;
+                dict[nameShouldDropActiveVersion] = @YES;
+                [RNChangeBundleFS saveStore:dict];
+                return _defaultBundleURL;
+            } else {
+                // Если прошлый раз реакт стартанул
+                BOOL isFileExists = [RNChangeBundleFS exists:path];
+                // Проверка на наличие этого кастомного файла
+                if (isFileExists){
+                    // Если файл существует, то запускаем проверку на успешный старт реакта
+                    dict[nameWaitingReactStart] = @YES;
+                    [RNChangeBundleFS saveStore:dict];
+                    return [NSURL fileURLWithPath:path];
+                } else {
+                    // Если файла нет, то и кастомного реакта нет
+                    dict[nameShouldDropActiveVersion] = @YES;
+                    [RNChangeBundleFS saveStore:dict];
+                    return _defaultBundleURL;
+                }
+            }
+        } else {
+            // Если было нативное обновление
+            dict[nameShouldDropActiveVersion] = @YES;
             [RNChangeBundleFS saveStore:dict];
             return _defaultBundleURL;
-        } else {
-            // Если прошлый раз реакт стартанул
-            BOOL isFileExists = [RNChangeBundleFS exists:path];
-            // Проверка на наличие этого кастомного файла
-            if (isFileExists){
-                // Если файл существует, то запускаем проверку на успешный старт реакта
-                dict[nameWaitingReactStart] = @YES;
-                [RNChangeBundleFS saveStore:dict];
-                return [NSURL fileURLWithPath:path];
-            } else {
-                // Если файла нет, то и кастомного реакта нет
-                [RNChangeBundleLib deleteBundle:dict[activeBundleName]];
-                [RNChangeBundleLib activateBundle:@""];
-                return _defaultBundleURL;
-            }
         }
     }
 }
@@ -110,7 +121,7 @@ static NSURL *_defaultBundleURL = nil;
                   withRejecter: (RCTPromiseRejectBlock)reject
 {
     NSError *error = nil;
-    
+    NSLog(@"%@", bundlePath);
     error = [RNChangeBundleLib addBundle:bundleId pathForBundle:bundlePath pathForAssets:assetsPath];
     
     if (error == nil){
@@ -186,6 +197,7 @@ static NSURL *_defaultBundleURL = nil;
 {
     NSMutableDictionary *dict = [RNChangeBundleFS loadStore];
     dict[activeBundleName] = bundleId;
+    dict[nameNativeBuildVersion] = [RNChangeBundleLib getBuildId];
     [RNChangeBundleFS saveStore:dict];
 }
 
@@ -202,7 +214,14 @@ static NSURL *_defaultBundleURL = nil;
     NSMutableDictionary *dict = [RNChangeBundleFS loadStore];
     dict[nameWaitingReactStart] = @NO;
     [RNChangeBundleFS saveStore:dict];
-    
+    if ([dict[nameShouldDropActiveVersion] boolValue]){
+        [RNChangeBundleLib deleteBundle:dict[activeBundleName]];
+        [RNChangeBundleLib activateBundle:@""];
+        NSMutableDictionary *dict = [RNChangeBundleFS loadStore];
+        dict[nameShouldDropActiveVersion] = @NO;
+        dict[nameNativeBuildVersion] = @"";
+        [RNChangeBundleFS saveStore:dict];
+    }
 }
 
 - (void)notifyIfUpdateAppliesPromise:(RCTPromiseResolveBlock)resolve
@@ -229,6 +248,16 @@ static NSURL *_defaultBundleURL = nil;
     [RNChangeBundleLib reload];
     resolve(@"Reloaded");
 }
+
++ (NSString *) getBuildId {
+    return [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+}
+
+- (void) getBuildIdPromise:(RCTPromiseResolveBlock)resolve
+              withRejecter: (RCTPromiseRejectBlock)reject {
+    resolve([RNChangeBundleLib getBuildId]);
+}
+
 
 RCT_REMAP_METHOD(addBundle, exportedAddBundle:(NSString *)bundleId pathForBundle:(NSString *)bundlePath  pathForAssets:(NSString *)assetsPath withResolver: (RCTPromiseResolveBlock)resolve
                  withRejecter: (RCTPromiseRejectBlock)reject)
@@ -265,6 +294,11 @@ RCT_REMAP_METHOD(notifyIfUpdateApplies, exportedNotifyIfUpdateApplies:(RCTPromis
 RCT_REMAP_METHOD(reload, exportedReload:(RCTPromiseResolveBlock)resolve withRejecter: (RCTPromiseRejectBlock)reject)
 {
     [self reloadPromise:resolve withRejecter:reject];
+}
+
+RCT_REMAP_METHOD(getBuildId, exportedGetBuildId:(RCTPromiseResolveBlock)resolve withRejecter: (RCTPromiseRejectBlock)reject)
+{
+    [self getBuildIdPromise:resolve withRejecter:reject];
 }
 
 
