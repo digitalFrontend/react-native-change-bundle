@@ -1,5 +1,9 @@
 package ru.nasvyazi.changebundle;
 
+import android.app.Activity;
+
+import com.facebook.react.ReactApplication;
+import com.facebook.react.ReactInstanceManager;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.ReadableMapKeySetIterator;

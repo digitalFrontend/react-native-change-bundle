@@ -2,7 +2,6 @@
 #import "RNChangeBundleLib.h"
 #import "RNChangeBundleFS.h"
 
-static NSString * const bundlesFolderName = @"bundles";
 static NSString * const activeBundleName = @"activeBundle";
 static NSString * const nameBundleList = @"bundleList";
 static NSString * const nameWaitingReactStart = @"waitReactStart";
@@ -121,7 +120,6 @@ static NSURL *_defaultBundleURL = nil;
                   withRejecter: (RCTPromiseRejectBlock)reject
 {
     NSError *error = nil;
-    NSLog(@"%@", bundlePath);
     error = [RNChangeBundleLib addBundle:bundleId pathForBundle:bundlePath pathForAssets:assetsPath];
     
     if (error == nil){
