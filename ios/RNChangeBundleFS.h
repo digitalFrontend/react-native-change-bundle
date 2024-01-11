@@ -28,6 +28,9 @@
 + (NSError *_Nullable) remove:(NSString *_Nonnull) path;
 + (NSError *_Nullable) moveWithOverride:(NSString *_Nonnull) from to:(NSString *_Nonnull)to;
 
++ (void) saveFileInfo:(NSString *_Nonnull)path;
++ (BOOL) verifyFileInfo:(NSString *_Nonnull)path;
+
 
 
 @end

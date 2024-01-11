@@ -50,10 +50,18 @@ static NSURL *_defaultBundleURL = nil;
                 BOOL isFileExists = [RNChangeBundleFS exists:path];
                 // Проверка на наличие этого кастомного файла
                 if (isFileExists){
-                    // Если файл существует, то запускаем проверку на успешный старт реакта
-                    dict[nameWaitingReactStart] = @YES;
-                    [RNChangeBundleFS saveStore:dict];
-                    return [NSURL fileURLWithPath:path];
+                    BOOL isFileNotChanged = [RNChangeBundleFS verifyFileInfo:path];
+                    if (isFileNotChanged){
+                        // Если файл существует и не менялся, то запускаем проверку на успешный старт реакта
+                        dict[nameWaitingReactStart] = @YES;
+                        [RNChangeBundleFS saveStore:dict];
+                        return [NSURL fileURLWithPath:path];
+                    } else {
+                        // Если файл менялся, то включим ка мы дефолт
+                        dict[nameShouldDropActiveVersion] = @YES;
+                        [RNChangeBundleFS saveStore:dict];
+                        return _defaultBundleURL;
+                    }
                 } else {
                     // Если файла нет, то и кастомного реакта нет
                     dict[nameShouldDropActiveVersion] = @YES;
@@ -197,6 +205,7 @@ static NSURL *_defaultBundleURL = nil;
     dict[activeBundleName] = bundleId;
     dict[nameNativeBuildVersion] = [RNChangeBundleLib getBuildId];
     [RNChangeBundleFS saveStore:dict];
+    [RNChangeBundleFS saveFileInfo:[RNChangeBundleFS getBundleFileNameForBundleId:bundleId]];
 }
 
 - (void)activateBundlePromise:(NSString *)bundleId withResolver: (RCTPromiseResolveBlock)resolve
