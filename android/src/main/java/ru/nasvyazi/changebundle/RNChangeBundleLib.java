@@ -53,13 +53,22 @@ public class RNChangeBundleLib {
                     boolean isFileExists = RNChangeBundleFS.exists(path);
                     // Проверка на наличие этого кастомного файла
                     if (isFileExists){
+                        boolean isFileNotChanged = RNChangeBundleFS.verifyFileInfo(context, path);
 
-                        // Если файл существует, то запускаем проверку на успешный старт реакта
-                        RNChangeBundleFS.commitOnPreferences(context, editor -> {
-                            editor.putBoolean(nameWaitingReactStart, true);
-                        });
+                        if (isFileNotChanged){
+                            // Если файл существует и не менялся, то запускаем проверку на успешный старт реакта
+                            RNChangeBundleFS.commitOnPreferences(context, editor -> {
+                                editor.putBoolean(nameWaitingReactStart, true);
+                            });
 
-                        return path;
+                            return path;
+                        } else {
+                            // Если файл менялся, то включим ка мы дефолт
+                            RNChangeBundleFS.commitOnPreferences(context, editor -> {
+                                editor.putBoolean(nameShouldDropActiveVersion, true);
+                            });
+                            return null;
+                        }
                     } else {
 
                         // Если файла нет, то и кастомного реакта нет
@@ -133,6 +142,7 @@ public class RNChangeBundleLib {
             editor.putString(activeBundleName, bundleId);
             editor.putString(nameNativeBuildVersion, RNChangeBundleLib.getBuildId(context));
         });
+        RNChangeBundleFS.saveFileInfo(context, RNChangeBundleFS.getBundleFileNameForBundleId(context, bundleId));
     }
 
     public static void notifyIfUpdateApplies(Context context){

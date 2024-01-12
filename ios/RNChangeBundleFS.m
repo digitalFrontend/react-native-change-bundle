@@ -149,10 +149,7 @@ static NSString * const nameShouldDropActiveVersion = @"shouldDropActiveVersion"
     NSDate *creationDate = [[[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil] fileCreationDate];
     
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    NSLog(@"LOOK");
-    NSLog(@"%@", fileSize);
-    NSLog(@"%@", modificationDate);
-    NSLog(@"%@", creationDate);
+    
     [defaults setObject:fileSize forKey:@"fileSize"];
     [defaults setObject:creationDate forKey:@"creationDate"];
     [defaults setObject:modificationDate forKey:@"modificationDate"];
@@ -171,11 +168,11 @@ static NSString * const nameShouldDropActiveVersion = @"shouldDropActiveVersion"
     NSString *storedFileSize = [defaults objectForKey:@"fileSize"];
     NSDate *storedCreationDate = [defaults objectForKey:@"creationDate"];
     NSDate *storedModificationDate = [defaults objectForKey:@"modificationDate"];
-    NSLog(@"LOOK2");
+    
     BOOL isCreationDateEquals = [storedCreationDate isEqualToDate:creationDate];
     BOOL isModificationDateEquals = [storedModificationDate isEqualToDate:modificationDate];
     BOOL isFileSizeEquals = [storedFileSize isEqualToString:fileSize];
-    NSLog(@"%d %d %d %d", isCreationDateEquals, isModificationDateEquals, isFileSizeEquals, isCreationDateEquals && isModificationDateEquals && isFileSizeEquals);
+    
     return isCreationDateEquals && isModificationDateEquals && isFileSizeEquals;
 }
 

@@ -2,6 +2,7 @@ package ru.nasvyazi.changebundle;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -19,6 +20,8 @@ public class RNChangeBundleFS {
     static String nameWaitingReactStart = "waitReactStart";
     static String nameNativeBuildVersion = "nativeBuildVersion";
     static String nameShouldDropActiveVersion = "shouldDropActiveVersion";
+    static String nameFileSize = "fileSize";
+    static String nameModificationDate = "modificationDate";
 
     public static String getDocumentDir(Context context){
         return context.getFilesDir().getAbsolutePath();
@@ -130,5 +133,32 @@ public class RNChangeBundleFS {
                 files[i].renameTo(dest);
             }
         }
+    }
+
+    public static void saveFileInfo(Context context, String path) {
+        File file = new File(path);
+        String fileSize = String.valueOf(file.length()/1024);
+        String lastModified = String.valueOf(file.lastModified());
+
+        RNChangeBundleFS.commitOnPreferences(context, editor -> {
+            editor.putString(nameFileSize, fileSize);
+            editor.putString(nameModificationDate, lastModified);
+        });
+    }
+
+    public static boolean verifyFileInfo(Context context, String path) {
+        File file = new File(path);
+        String fileSize = String.valueOf(file.length()/1024);
+        String lastModified = String.valueOf(file.lastModified());
+
+        SharedPreferences prefs = RNChangeBundleFS.getPreferences(context);
+
+        String storedFileSize = prefs.getString(nameFileSize, null);
+        String storedLastModified = prefs.getString(nameModificationDate, null);
+
+        boolean isFileSizeEquals = storedFileSize.equals(fileSize);
+        boolean isModifiedDateEquals = storedLastModified.equals(lastModified);
+
+        return isFileSizeEquals && isModifiedDateEquals;
     }
 }
