@@ -39,7 +39,6 @@ public class RNChangeBundleLib {
 
                 // Проверка на прошлый запуск реакта
                 if (waitReactStart){
-
                     // Если прошлый раз реакт не стартанул
                     RNChangeBundleFS.commitOnPreferences(context, editor -> {
                         editor.putBoolean(nameWaitingReactStart, false);
@@ -53,9 +52,11 @@ public class RNChangeBundleLib {
                     boolean isFileExists = RNChangeBundleFS.exists(path);
                     // Проверка на наличие этого кастомного файла
                     if (isFileExists){
+
                         boolean isFileNotChanged = RNChangeBundleFS.verifyFileInfo(context, path);
 
                         if (isFileNotChanged){
+
                             // Если файл существует и не менялся, то запускаем проверку на успешный старт реакта
                             RNChangeBundleFS.commitOnPreferences(context, editor -> {
                                 editor.putBoolean(nameWaitingReactStart, true);
@@ -70,7 +71,6 @@ public class RNChangeBundleLib {
                             return null;
                         }
                     } else {
-
                         // Если файла нет, то и кастомного реакта нет
                         RNChangeBundleFS.commitOnPreferences(context, editor -> {
                             editor.putBoolean(nameShouldDropActiveVersion, true);
