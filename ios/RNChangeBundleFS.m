@@ -61,7 +61,7 @@ static NSString * const nameShouldDropActiveVersion = @"shouldDropActiveVersion"
 
 + (NSString *) getAssetsFolderNameForBundleId:(NSString *) bundleId
 {
-    NSString *path = [[[[RNChangeBundleFS getDocumentDir] stringByAppendingPathComponent:bundlesFolderName] stringByAppendingPathComponent:bundleId] stringByAppendingPathComponent:assetsFolderName];
+    NSString *path = [[[RNChangeBundleFS getDocumentDir] stringByAppendingPathComponent:bundlesFolderName] stringByAppendingPathComponent:bundleId];
     
     return path;
 }

@@ -104,14 +104,18 @@ static NSURL *_defaultBundleURL = nil;
         }
     }
     
-    error = [RNChangeBundleFS moveWithOverride:bundlePath to:[RNChangeBundleFS getBundleFileNameForBundleId:bundleId]];
+  
+    
+    
+    error = [RNChangeBundleFS moveWithOverride:assetsPath to:[RNChangeBundleFS getAssetsFolderNameForBundleId:bundleId]];
     
     if (error != nil){
         NSLog(@"error %@", error);
         return error;
     }
     
-    error = [RNChangeBundleFS moveWithOverride:assetsPath to:[RNChangeBundleFS getAssetsFolderNameForBundleId:bundleId]];
+    
+    error = [RNChangeBundleFS moveWithOverride:bundlePath to:[RNChangeBundleFS getBundleFileNameForBundleId:bundleId]];
     
     if (error != nil){
         NSLog(@"error %@", error);
