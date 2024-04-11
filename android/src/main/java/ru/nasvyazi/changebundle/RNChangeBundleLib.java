@@ -38,7 +38,9 @@ public class RNChangeBundleLib {
                 String path = RNChangeBundleFS.getBundleFileNameForBundleId(context, activeBundle);
 
                 // Проверка на прошлый запуск реакта
-                if (waitReactStart){
+                // if (waitReactStart){
+                // Временное решение
+                if (false){
                     // Если прошлый раз реакт не стартанул
                     RNChangeBundleFS.commitOnPreferences(context, editor -> {
                         editor.putBoolean(nameWaitingReactStart, false);
